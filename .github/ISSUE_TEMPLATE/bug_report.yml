@@ -1,0 +1,49 @@
+name: Bug Report
+description: Report a reproducible defect in an OIS tool, workflow, or documentation
+title: "[Bug]: "
+labels: ["bug", "triage"]
+body:
+  - type: dropdown
+    id: project
+    attributes:
+      label: Affected Project / Area
+      options:
+        - Repository / Governance
+        - 01-codeguard
+        - 02-threatlens
+        - 03-uptimepulse
+        - 04-deploysafe
+        - 05-querysense-ai
+        - 06-datatrust
+        - 07-netscope
+        - 08-itflow
+        - 09-cloudcostiq
+        - 10-accesscheck
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: Clear and concise summary of what failed.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Commands, inputs, and configuration required to reproduce the issue.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected vs Actual Behaviour
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, runtime versions, and commit SHA.
+

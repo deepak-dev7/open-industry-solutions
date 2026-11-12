@@ -1,0 +1,43 @@
+name: Feature Request
+description: Propose an improvement or new capability for an existing OIS project
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: dropdown
+    id: project
+    attributes:
+      label: Target Project / Area
+      options:
+        - Repository / Governance
+        - 01-codeguard
+        - 02-threatlens
+        - 03-uptimepulse
+        - 04-deploysafe
+        - 05-querysense-ai
+        - 06-datatrust
+        - 07-netscope
+        - 08-itflow
+        - 09-cloudcostiq
+        - 10-accesscheck
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / Motivation
+      description: What real-world workflow or pain point does this address?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed Solution
+      description: Describe the desired CLI/API behaviour or architectural change.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      description: How should completion be verified?
+

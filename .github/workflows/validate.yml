@@ -1,0 +1,97 @@
+name: Repository Validation
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  validate-structure:
+    name: Validate OIS Structure & Hygiene
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify required root and governance files
+        run: |
+          set -euo pipefail
+          required_files=(
+            "README.md"
+            "LICENSE"
+            "CONTRIBUTING.md"
+            "CODE_OF_CONDUCT.md"
+            ".gitignore"
+            ".editorconfig"
+            "research/industry-problems.md"
+            "research/technology-decisions.md"
+            "research/references.md"
+            "docs/architecture/programme-architecture.md"
+            "docs/architecture/project-lifecycle.md"
+            "docs/security/security-standards.md"
+            "docs/development/engineering-standards.md"
+            "docs/development/roadmap.md"
+            "progress/monthly-tracker.md"
+            "progress/changelog.md"
+            ".github/pull_request_template.md"
+            ".github/workflows/validate.yml"
+          )
+          for file in "${required_files[@]}"; do
+            if [[ ! -f "$file" ]]; then
+              echo "Missing required file: $file"
+              exit 1
+            fi
+          done
+
+      - name: Verify November 2026 project workspaces
+        run: |
+          set -euo pipefail
+          projects=(
+            "01-codeguard"
+            "02-threatlens"
+            "03-uptimepulse"
+            "04-deploysafe"
+            "05-querysense-ai"
+            "06-datatrust"
+            "07-netscope"
+            "08-itflow"
+            "09-cloudcostiq"
+            "10-accesscheck"
+          )
+          for project in "${projects[@]}"; do
+            if [[ ! -f "projects/${project}/README.md" ]]; then
+              echo "Missing project README: projects/${project}/README.md"
+              exit 1
+            fi
+          done
+
+      - name: Check for forbidden secret or environment files
+        run: |
+          set -euo pipefail
+          forbidden=$(git ls-files | grep -E '(^\.env$|\.env\.|\.pem$|\.key$|\.p12$|\.pfx$)' || true)
+          if [[ -n "$forbidden" ]]; then
+            echo "Forbidden sensitive files tracked in Git:"
+            echo "$forbidden"
+            exit 1
+          fi
+
+      - name: Validate YAML files
+        run: |
+          python3 - <<'EOF'
+          import pathlib, sys
+          try:
+              import yaml
+          except ImportError:
+              print("PyYAML not installed; skipping YAML parse.")
+              sys.exit(0)
+
+          for path in list(pathlib.Path(".github").rglob("*.yml")) + list(pathlib.Path(".github").rglob("*.yaml")):
+              with path.open("r", encoding="utf-8") as fh:
+                  yaml.safe_load(fh)
+              print(f"Valid YAML: {path}")
+          EOF
+

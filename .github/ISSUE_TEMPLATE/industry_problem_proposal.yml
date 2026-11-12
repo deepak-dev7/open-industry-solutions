@@ -1,0 +1,42 @@
+name: Industry Problem Proposal
+description: Propose a genuine IT industry problem for an upcoming OIS monthly cohort
+title: "[Problem Proposal]: "
+labels: ["research", "proposal"]
+body:
+  - type: dropdown
+    id: domain
+    attributes:
+      label: IT Industry Domain
+      options:
+        - Software Engineering & Developer Productivity
+        - Cybersecurity & Identity (SecOps / IAM)
+        - Site Reliability Engineering (SRE) & Observability
+        - DevOps, CI/CD & Release Safety
+        - Data Engineering, Databases & Applied AI
+        - Networking & Infrastructure Operations
+        - IT Service Management (ITSM) & Enterprise Automation
+        - Cloud Infrastructure & FinOps
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Industry Problem Statement
+      description: Describe the genuine operational or engineering pain point in production IT environments.
+    validations:
+      required: true
+  - type: textarea
+    id: limitations
+    attributes:
+      label: Gaps in Existing Open-Source Tooling
+      description: Why do current open-source alternatives fall short?
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Proposed Open-Source Solution Scope
+      description: Outline realistic MVP capabilities, open standards, and verification criteria.
+    validations:
+      required: true
+
