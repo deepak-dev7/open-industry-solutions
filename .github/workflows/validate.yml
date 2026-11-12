@@ -72,7 +72,7 @@ jobs:
       - name: Check for forbidden secret or environment files
         run: |
           set -euo pipefail
-          forbidden=$(git ls-files | grep -E '(^\.env$|\.env\.|\.pem$|\.key$|\.p12$|\.pfx$)' || true)
+          forbidden=$(git ls-files | grep -E '((^|/)\.env$|\.env\.|\.pem$|\.key$|\.p12$|\.pfx$)' | grep -vE '\.env\.example$' || true)
           if [[ -n "$forbidden" ]]; then
             echo "Forbidden sensitive files tracked in Git:"
             echo "$forbidden"

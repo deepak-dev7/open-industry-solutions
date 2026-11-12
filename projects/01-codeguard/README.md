@@ -1,6 +1,6 @@
 # 01 — CodeGuard
 
-- **Status:** `VERIFIED`
+- **Status:** `RELEASED`
 - **Cohort:** November 2026
 - **Domain:** Software Engineering & Developer Productivity
 - **Version:** `0.2.0`

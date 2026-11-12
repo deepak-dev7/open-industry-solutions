@@ -6,11 +6,11 @@
 
 ---
 
-## November 2026 Cohort (1 Verified / 9 Planned)
+## November 2026 Cohort (1 Released / 9 Planned)
 
 | # | Project | Domain | Lifecycle Status | Implementation | Tests | Release Criteria |
 | --- | --- | --- | --- | --- | --- | --- |
-| 01 | [CodeGuard](../projects/01-codeguard/README.md) | Software Engineering & Developer Productivity | `VERIFIED` | FastAPI + SQLite + Web Workbench + CLI (`src/codeguard/`) | Passing (22 tests) | Docker build & CI validation |
+| 01 | [CodeGuard](../projects/01-codeguard/README.md) | Software Engineering & Developer Productivity | `RELEASED` | FastAPI + SQLite + Web Workbench + CLI (`src/codeguard/`) | Passing (22 tests) | Met (`v0.2.0` + CI Docker build) |
 | 02 | [ThreatLens](../projects/02-threatlens/README.md) | Cybersecurity & Identity | `PLANNED` | Not started | Not started | Pending |
 | 03 | [UptimePulse](../projects/03-uptimepulse/README.md) | SRE & Observability | `PLANNED` | Not started | Not started | Pending |
 | 04 | [DeploySafe](../projects/04-deploysafe/README.md) | DevOps, CI/CD & Release Safety | `PLANNED` | Not started | Not started | Pending |
@@ -28,6 +28,6 @@
 - **PLANNED:** 9
 - **DESIGNED:** 0
 - **IN_DEVELOPMENT:** 0
-- **VERIFIED:** 1
-- **RELEASED:** 0
+- **VERIFIED:** 0
+- **RELEASED:** 1
 
