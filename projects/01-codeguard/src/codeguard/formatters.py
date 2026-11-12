@@ -1,8 +1,10 @@
-"""Output formatters for CodeGuard: human-readable text, JSON, and SARIF v2.1.0."""
+"""Output formatters for CodeGuard: human-readable text, JSON, SARIF v2.1.0, and HTML."""
 
 from __future__ import annotations
 
+import html
 import json
+from typing import Any
 
 from codeguard import __version__
 from codeguard.models import ScanResult, Severity
@@ -123,3 +125,52 @@ def format_sarif(result: ScanResult) -> str:
         ],
     }
     return json.dumps(sarif_doc, indent=2) + "\n"
+
+
+def format_html_report(scan_record: dict[str, Any]) -> str:
+    """Render a standalone, HTML-escaped report for a persisted CodeGuard scan."""
+    target = html.escape(str(scan_record["target_label"]))
+    created_at = html.escape(str(scan_record["created_at"]))
+    status_text = "FAIL" if scan_record["failed"] else "PASS"
+    rows: list[str] = []
+    for f in scan_record.get("findings", []):
+        rows.append(
+            "<tr>"
+            f"<td>{html.escape(str(f['severity']).upper())}</td>"
+            f"<td><code>{html.escape(str(f['rule_id']))}</code></td>"
+            f"<td>{html.escape(str(f['cwe']))}</td>"
+            f"<td><code>{html.escape(str(f['file_path']))}:{int(f['line'])}:{int(f['column'])}</code></td>"
+            f"<td>{html.escape(str(f['message']))}<br><small>{html.escape(str(f['remediation']))}</small></td>"
+            f"<td>{html.escape(str(f['status']))}</td>"
+            "</tr>"
+        )
+    table_body = "\n".join(rows) if rows else '<tr><td colspan="6">No findings detected.</td></tr>'
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>CodeGuard Report — {target}</title>
+  <style>
+    body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 32px; color: #0f172a; }}
+    h1 {{ margin-bottom: 4px; }}
+    .meta {{ color: #475569; margin-bottom: 20px; }}
+    table {{ width: 100%; border-collapse: collapse; font-size: 14px; }}
+    th, td {{ border: 1px solid #cbd5e1; padding: 10px; text-align: left; vertical-align: top; }}
+    th {{ background: #f1f5f9; }}
+    code {{ background: #f1f5f9; padding: 2px 5px; border-radius: 4px; }}
+  </style>
+</head>
+<body>
+  <h1>CodeGuard Security &amp; Quality Report</h1>
+  <p class="meta">Target: <code>{target}</code> | Scanned: {created_at} | Status: <strong>{status_text}</strong> | Files: {int(scan_record['files_scanned'])} | Findings: {int(scan_record['findings_count'])}</p>
+  <table>
+    <thead>
+      <tr><th>Severity</th><th>Rule</th><th>CWE</th><th>Location</th><th>Details &amp; Remediation</th><th>Status</th></tr>
+    </thead>
+    <tbody>
+      {table_body}
+    </tbody>
+  </table>
+</body>
+</html>
+"""
