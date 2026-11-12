@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
+- **01 — CodeGuard (`VERIFIED`):** Implemented zero-dependency Python 3.11+ static security and quality guardrail CLI (`src/codeguard/`), ADR-001, threat model, SARIF v2.1.0 / JSON / text formatters, Git `--staged` and `--diff` support, `.codeguard.toml` loader, 16 unit/integration tests, and CI self-scan in `.github/workflows/validate.yml`.
 - Initialised the Open Industry Solutions (`open-industry-solutions`) workspace structure.
 - Added governance documentation (`README.md`, `LICENSE`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`).
 - Documented the 8 IT industry domains, 10 November 2026 problem statements, technology decision framework, and references in `research/`.

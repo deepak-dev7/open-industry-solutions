@@ -95,3 +95,24 @@ jobs:
               print(f"Valid YAML: {path}")
           EOF
 
+  test-01-codeguard:
+    name: Test 01-codeguard & Self-Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Run 01-codeguard unit and integration tests
+        working-directory: projects/01-codeguard
+        run: python -m unittest discover -s tests -v
+
+      - name: Run CodeGuard repository self-scan
+        env:
+          PYTHONPATH: projects/01-codeguard/src
+        run: python -m codeguard.cli scan . --fail-on high
+
