@@ -79,6 +79,14 @@ codeguard rules --format json
 codeguard init
 ```
 
+### Launch the Local Web UI (Folder Path & Folder Upload)
+
+```bash
+codeguard ui --host 127.0.0.1 --port 8765
+```
+
+Then open `http://127.0.0.1:8765` in your browser to scan a local folder path or upload a folder directly and download JSON or SARIF v2.1.0 reports.
+
 ### Exit Codes
 
 | Exit Code | Meaning |

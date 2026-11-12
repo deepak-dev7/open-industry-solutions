@@ -14,6 +14,7 @@ from codeguard.formatters import format_json, format_sarif, format_text
 from codeguard.models import Severity
 from codeguard.rules import ALL_RULES
 from codeguard.scanner import get_git_changed_files, scan_paths
+from codeguard.web import serve_ui
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -87,6 +88,19 @@ def build_parser() -> argparse.ArgumentParser:
         "--force",
         action="store_true",
         help="Overwrite an existing configuration file.",
+    )
+
+    ui_parser = subparsers.add_parser("ui", help="Launch the local CodeGuard web UI.")
+    ui_parser.add_argument(
+        "--host",
+        default="127.0.0.1",
+        help="Bind host address (default: 127.0.0.1).",
+    )
+    ui_parser.add_argument(
+        "--port",
+        type=int,
+        default=8765,
+        help="Bind port (default: 8765).",
     )
 
     return parser
@@ -188,6 +202,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _handle_rules(args)
     if args.command == "init":
         return _handle_init(args)
+    if args.command == "ui":
+        serve_ui(host=args.host, port=args.port)
+        return 0
 
     parser.print_help()
     return 2
