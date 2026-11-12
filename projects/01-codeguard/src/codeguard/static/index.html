@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CodeGuard — Static Security &amp; Code Quality Workbench</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar" aria-label="Primary Navigation">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">CG</div>
+        <div>
+          <div class="brand-name">CodeGuard</div>
+          <div class="brand-sub" id="sidebar-version">OIS · Project 01</div>
+        </div>
+      </div>
+
+      <nav class="nav-list">
+        <button class="nav-item active" type="button" data-view="dashboard">
+          <span class="nav-dot" aria-hidden="true"></span>Dashboard
+        </button>
+        <button class="nav-item" type="button" data-view="scanner">
+          <span class="nav-dot" aria-hidden="true"></span>Scanner
+        </button>
+        <button class="nav-item" type="button" data-view="history">
+          <span class="nav-dot" aria-hidden="true"></span>Scan History &amp; Reports
+        </button>
+        <button class="nav-item" type="button" data-view="rules">
+          <span class="nav-dot" aria-hidden="true"></span>Rules Catalog
+        </button>
+        <button class="nav-item" type="button" data-view="settings">
+          <span class="nav-dot" aria-hidden="true"></span>Settings &amp; Audit Log
+        </button>
+        <button class="nav-item" type="button" data-view="help">
+          <span class="nav-dot" aria-hidden="true"></span>Help &amp; Docs
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="status-pill" id="api-status-pill">
+          <span class="status-indicator" id="api-status-dot"></span>
+          <span id="api-status-text">Checking API...</span>
+        </div>
+      </div>
+    </aside>
+
+    <div class="main-wrap">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="btn-icon mobile-menu-btn" id="mobile-menu-btn" type="button" aria-label="Toggle navigation menu">☰</button>
+          <div>
+            <h1 class="page-title" id="page-title">Security &amp; Quality Dashboard</h1>
+            <p class="page-subtitle" id="page-subtitle">Real-time posture across persisted local scans</p>
+          </div>
+        </div>
+        <div class="topbar-actions">
+          <button class="btn secondary" id="quick-scan-nav-btn" type="button">+ New Scan</button>
+          <button class="btn secondary" id="theme-toggle-btn" type="button" aria-label="Toggle light and dark theme">Light Mode</button>
+        </div>
+      </header>
+
+      <div class="alert error hidden" id="global-error" role="alert" aria-live="polite"></div>
+      <div class="alert success hidden" id="global-toast" role="status" aria-live="polite"></div>
+
+      <main class="content">
+        <!-- VIEW 1: DASHBOARD -->
+        <section class="view" id="view-dashboard">
+          <div class="kpi-grid" id="dashboard-kpis"></div>
+          <div class="two-col">
+            <article class="card">
+              <div class="card-head">
+                <h2>Open Findings by Severity</h2>
+                <span class="muted small">Persisted SQLite state</span>
+              </div>
+              <div id="severity-bars" class="bars-wrap"></div>
+            </article>
+            <article class="card">
+              <div class="card-head">
+                <h2>Top Triggered Rules</h2>
+                <span class="muted small">Across all scans</span>
+              </div>
+              <div id="top-rules-list"></div>
+            </article>
+          </div>
+          <article class="card">
+            <div class="card-head">
+              <h2>Recent Scans</h2>
+              <button class="btn secondary small" id="view-all-history-btn" type="button">View All</button>
+            </div>
+            <div class="table-wrap" id="recent-scans-table"></div>
+          </article>
+        </section>
+
+        <!-- VIEW 2: SCANNER -->
+        <section class="view hidden" id="view-scanner">
+          <div class="card">
+            <div class="card-head">
+              <h2>Scan Configuration</h2>
+              <span class="muted small">Overrides apply to this run; defaults live in Settings</span>
+            </div>
+            <div class="inline-controls">
+              <div class="field">
+                <label for="scan-fail-on">Fail-On Severity Gate</label>
+                <select id="scan-fail-on">
+                  <option value="low">Low (strict)</option>
+                  <option value="medium">Medium</option>
+                  <option value="high" selected>High (recommended)</option>
+                  <option value="critical">Critical only</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="two-col">
+            <article class="card">
+              <h2>Option A — Browse or Enter Approved Path</h2>
+              <p class="muted">Inspect any local repository or directory without uploading code externally.</p>
+              <label for="scan-path-input">Folder or File Path</label>
+              <div class="input-row">
+                <input type="text" id="scan-path-input" placeholder="C:\path\to\project or /workspace/repo" />
+                <button class="btn secondary" id="open-browser-btn" type="button">Browse</button>
+              </div>
+              <button class="btn primary" id="run-path-scan-btn" type="button">Run Static Scan</button>
+            </article>
+
+            <article class="card">
+              <h2>Option B — Upload Local Folder</h2>
+              <p class="muted">Select a directory via your browser. <code>.git</code>, <code>node_modules</code>, <code>.venv</code>, binaries, and oversized files are skipped automatically.</p>
+              <label for="folder-upload-input">Select Project Folder</label>
+              <input type="file" id="folder-upload-input" webkitdirectory directory multiple />
+              <div class="input-row">
+                <button class="btn primary" id="run-upload-scan-btn" type="button">Upload &amp; Scan</button>
+                <span class="muted small" id="upload-selection-label">No folder selected</span>
+              </div>
+            </article>
+          </div>
+
+          <div class="card loading-card hidden" id="scan-loading" aria-live="polite">
+            <div class="spinner" aria-hidden="true"></div>
+            <div>
+              <strong>Scanning source tree...</strong>
+              <div class="muted small">Running secret redaction, Python AST checks, and static pattern rules.</div>
+            </div>
+          </div>
+
+          <article class="card hidden" id="active-scan-card">
+            <div class="card-head wrap">
+              <div>
+                <h2 id="active-scan-title">Scan Results</h2>
+                <p class="muted small" id="active-scan-meta"></p>
+              </div>
+              <div class="btn-group">
+                <button class="btn secondary small" id="export-json-btn" type="button">Export JSON</button>
+                <button class="btn secondary small" id="export-sarif-btn" type="button">Export SARIF</button>
+                <button class="btn secondary small" id="export-html-btn" type="button">Export HTML</button>
+              </div>
+            </div>
+            <div class="stats-strip" id="active-scan-stats"></div>
+            <div class="filter-bar">
+              <input type="search" id="finding-search-input" placeholder="Filter by file path, rule ID, or message..." aria-label="Filter findings" />
+              <select id="finding-severity-filter" aria-label="Filter by severity">
+                <option value="">All Severities</option>
+                <option value="critical">Critical</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+              </select>
+              <select id="finding-status-filter" aria-label="Filter by triage status">
+                <option value="">All Statuses</option>
+                <option value="open">Open</option>
+                <option value="acknowledged">Acknowledged</option>
+                <option value="false_positive">False Positive</option>
+              </select>
+            </div>
+            <div id="active-findings-list"></div>
+          </article>
+        </section>
+
+        <!-- VIEW 3: SCAN HISTORY & REPORTS -->
+        <section class="view hidden" id="view-history">
+          <article class="card">
+            <div class="card-head wrap">
+              <h2>Persisted Scan History</h2>
+              <div class="filter-bar compact">
+                <input type="search" id="history-search-input" placeholder="Search path or folder..." aria-label="Search scan history" />
+                <select id="history-status-filter" aria-label="Filter scan status">
+                  <option value="">All Runs</option>
+                  <option value="pass">Pass Only</option>
+                  <option value="fail">Failed Gate Only</option>
+                </select>
+                <button class="btn secondary small" id="refresh-history-btn" type="button">Refresh</button>
+              </div>
+            </div>
+            <div class="table-wrap" id="history-table-wrap"></div>
+          </article>
+        </section>
+
+        <!-- VIEW 4: RULES CATALOG -->
+        <section class="view hidden" id="view-rules">
+          <article class="card">
+            <div class="card-head wrap">
+              <h2>Built-In Security &amp; Quality Rules</h2>
+              <div class="filter-bar compact">
+                <input type="search" id="rules-search-input" placeholder="Search rule ID, CWE, or keyword..." aria-label="Search rules" />
+                <select id="rules-severity-filter" aria-label="Filter rules by severity">
+                  <option value="">All Severities</option>
+                  <option value="critical">Critical</option>
+                  <option value="high">High</option>
+                  <option value="medium">Medium</option>
+                  <option value="low">Low</option>
+                </select>
+              </div>
+            </div>
+            <div id="rules-catalog-list" class="rules-grid"></div>
+          </article>
+        </section>
+
+        <!-- VIEW 5: SETTINGS & AUDIT LOG -->
+        <section class="view hidden" id="view-settings">
+          <div class="two-col">
+            <article class="card">
+              <h2>Scanner Governance Settings</h2>
+              <p class="muted small">Persisted in SQLite and applied to subsequent web scans.</p>
+              <form id="settings-form">
+                <label for="set-fail-on">Default Fail-On Severity</label>
+                <select id="set-fail-on">
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                  <option value="critical">Critical</option>
+                </select>
+
+                <label for="set-max-size">Max File Size (KB)</label>
+                <input type="number" id="set-max-size" min="1" max="20480" required />
+
+                <label for="set-entropy">Secret Entropy Threshold</label>
+                <input type="number" id="set-entropy" step="0.1" min="1.0" max="8.0" required />
+
+                <label for="set-allowed-roots">Approved Scan Roots (one absolute path per line; empty allows any local directory)</label>
+                <textarea id="set-allowed-roots" rows="3" placeholder="C:\Users\deepu\OneDrive\Documents\OIS"></textarea>
+
+                <label for="set-disabled-rules">Disabled Rule IDs (comma-separated)</label>
+                <input type="text" id="set-disabled-rules" placeholder="CG-PY-005, CG-CFG-001" />
+
+                <label for="set-ignore-paths">Ignore Glob Patterns (one per line)</label>
+                <textarea id="set-ignore-paths" rows="4"></textarea>
+
+                <label for="set-allowlist">Allowlist Regex Patterns (one per line)</label>
+                <textarea id="set-allowlist" rows="3"></textarea>
+
+                <button class="btn primary" type="submit">Save Settings</button>
+              </form>
+            </article>
+
+            <article class="card">
+              <div class="card-head">
+                <h2>Security &amp; Operations Audit Log</h2>
+                <button class="btn secondary small" id="refresh-audit-btn" type="button">Refresh</button>
+              </div>
+              <div id="audit-log-list" class="audit-list"></div>
+            </article>
+          </div>
+        </section>
+
+        <!-- VIEW 6: HELP & DOCS -->
+        <section class="view hidden" id="view-help">
+          <div class="two-col">
+            <article class="card">
+              <h2>Using CodeGuard Locally &amp; in CI</h2>
+              <p class="muted">CodeGuard shares the same deterministic engine across this web workbench, pre-commit CLI, and GitHub Actions.</p>
+              <h3>CLI Quick Reference</h3>
+              <pre class="code-block">codeguard scan .
+codeguard scan --staged
+codeguard scan --diff origin/main --format sarif --output codeguard.sarif
+codeguard rules
+codeguard init
+codeguard ui --host 127.0.0.1 --port 8765</pre>
+              <h3>Inline Suppressions</h3>
+              <pre class="code-block">legacy_digest = hashlib.md5(payload)  # codeguard: ignore[CG-PY-005]</pre>
+            </article>
+            <article class="card">
+              <h2>Security Controls &amp; Architecture</h2>
+              <ul class="doc-list">
+                <li><strong>Zero Untrusted Execution:</strong> Files are inspected statically via Python <code>ast.parse</code> and bounded regular expressions. Uploaded code is never imported or executed.</li>
+                <li><strong>Automatic Secret Redaction:</strong> Credential findings mask interior characters before persisting to SQLite or rendering in reports.</li>
+                <li><strong>Path Traversal &amp; Root Guards:</strong> Uploaded folder entries reject <code>..</code> and absolute escapes; local browsing honours configured approved roots.</li>
+                <li><strong>Report Formats:</strong> Export persisted runs in JSON, OASIS SARIF v2.1.0 (GitHub Code Scanning compatible), or standalone HTML.</li>
+              </ul>
+            </article>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <!-- FOLDER BROWSER MODAL -->
+  <div class="modal-backdrop hidden" id="folder-modal" role="dialog" aria-modal="true" aria-labelledby="folder-modal-title">
+    <div class="modal">
+      <div class="card-head">
+        <h2 id="folder-modal-title">Browse Local Folders</h2>
+        <button class="btn secondary small" id="close-browser-btn" type="button" aria-label="Close folder browser">Close</button>
+      </div>
+      <div class="browser-bar">
+        <button class="btn secondary small" id="browser-up-btn" type="button">Up</button>
+        <code class="browser-path" id="browser-current-path"></code>
+        <span class="badge hidden" id="browser-git-badge">Git Repo</span>
+      </div>
+      <div class="browser-list" id="browser-dir-list"></div>
+      <div class="modal-footer">
+        <button class="btn primary" id="select-current-folder-btn" type="button">Use Current Folder</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
+

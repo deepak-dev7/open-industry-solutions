@@ -1,104 +1,169 @@
-"""Tests for the CodeGuard local web UI server and JSON/upload scan endpoints."""
+"""End-to-end FastAPI + SQLite tests for the CodeGuard web workbench."""
 
 from __future__ import annotations
 
-import json
 import sys
 import tempfile
-import threading
 import unittest
-import urllib.error
-import urllib.request
 from pathlib import Path
+
+from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from codeguard.web import create_server
+from codeguard.api import create_app
 
 
-class WebUiTestCase(unittest.TestCase):
+class CodeGuardWebAppTestCase(unittest.TestCase):
     def setUp(self) -> None:
-        self.server = create_server(host="127.0.0.1", port=0)
-        self.port = self.server.server_address[1]
-        self.base_url = f"http://127.0.0.1:{self.port}"
-        self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
-        self.thread.start()
+        self._tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self._tmp.name).resolve()
+        self.db_path = self.root / "test_codeguard.db"
+        self.client = TestClient(create_app(db_path=self.db_path))
 
     def tearDown(self) -> None:
-        self.server.shutdown()
-        self.server.server_close()
-        self.thread.join(timeout=2)
+        self._tmp.cleanup()
 
-    def _post_json(self, path: str, payload: dict[str, object]) -> tuple[int, dict[str, object]]:
-        data = json.dumps(payload).encode("utf-8")
-        req = urllib.request.Request(
-            f"{self.base_url}{path}",
-            data=data,
-            headers={"Content-Type": "application/json"},
-            method="POST",
+    def test_frontend_static_assets_and_security_headers(self) -> None:
+        resp = self.client.get("/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("CodeGuard", resp.text)
+        self.assertEqual(resp.headers.get("X-Content-Type-Options"), "nosniff")
+        self.assertEqual(resp.headers.get("X-Frame-Options"), "DENY")
+        self.assertIn("script-src 'self'", resp.headers.get("Content-Security-Policy", ""))
+
+        self.assertEqual(self.client.get("/static/styles.css").status_code, 200)
+        self.assertEqual(self.client.get("/static/app.js").status_code, 200)
+
+        health = self.client.get("/api/health")
+        self.assertEqual(health.status_code, 200)
+        self.assertEqual(health.json()["database"], "ok")
+
+    def test_path_scan_persistence_dashboard_triage_export_and_delete(self) -> None:
+        project_dir = self.root / "sample_repo"
+        project_dir.mkdir()
+        (project_dir / "app.py").write_text(
+            'import os\nos.system("id")\nimport hashlib\nhashlib.md5(b"x")\n',
+            encoding="utf-8",
         )
-        try:
-            with urllib.request.urlopen(req, timeout=5) as resp:
-                return resp.status, json.loads(resp.read().decode("utf-8"))
-        except urllib.error.HTTPError as exc:
-            return exc.code, json.loads(exc.read().decode("utf-8"))
 
-    def test_serves_html_and_rules_endpoint(self) -> None:
-        with urllib.request.urlopen(f"{self.base_url}/", timeout=5) as resp:
-            self.assertEqual(resp.status, 200)
-            html = resp.read().decode("utf-8")
-            self.assertIn("CodeGuard", html)
-            self.assertIn("webkitdirectory", html)
-
-        with urllib.request.urlopen(f"{self.base_url}/api/rules", timeout=5) as resp:
-            self.assertEqual(resp.status, 200)
-            body = json.loads(resp.read().decode("utf-8"))
-            self.assertGreaterEqual(len(body["rules"]), 14)
-
-    def test_scan_path_endpoint_finds_issues_and_handles_missing_path(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            (root / "sample.py").write_text('eval("1+1")\n', encoding="utf-8")
-
-            status, body = self._post_json("/api/scan-path", {"path": str(root), "fail_on": "high"})
-            self.assertEqual(status, 200)
-            self.assertTrue(body["failed"])
-            self.assertEqual(body["summary"]["findings_count"], 1)
-            self.assertEqual(body["findings"][0]["rule_id"], "CG-PY-001")
-            self.assertIn("2.1.0", str(body["sarif"]))
-
-        missing_status, missing_body = self._post_json(
-            "/api/scan-path", {"path": "Z:/definitely/does/not/exist/codeguard"}
+        scan_resp = self.client.post(
+            "/api/scans/path",
+            json={"path": str(project_dir), "fail_on": "high"},
         )
-        self.assertEqual(missing_status, 400)
-        self.assertIn("does not exist", str(missing_body["error"]))
+        self.assertEqual(scan_resp.status_code, 200)
+        scan = scan_resp.json()
+        self.assertTrue(scan["failed"])
+        self.assertEqual(scan["findings_count"], 2)
+        self.assertEqual(scan["high_count"], 1)
+        self.assertEqual(scan["medium_count"], 1)
 
-    def test_scan_upload_endpoint_scans_files_and_blocks_traversal(self) -> None:
-        status, body = self._post_json(
-            "/api/scan-upload",
-            {
+        dash = self.client.get("/api/dashboard").json()
+        self.assertEqual(dash["total_scans"], 1)
+        self.assertEqual(dash["open_findings"], 2)
+
+        filtered = self.client.get(f"/api/scans/{scan['id']}?severity=high").json()
+        self.assertEqual(len(filtered["findings"]), 1)
+        finding_id = filtered["findings"][0]["id"]
+
+        triage = self.client.patch(
+            f"/api/findings/{finding_id}",
+            json={"status": "acknowledged"},
+        )
+        self.assertEqual(triage.status_code, 200)
+        self.assertEqual(triage.json()["status"], "acknowledged")
+
+        dash_after = self.client.get("/api/dashboard").json()
+        self.assertEqual(dash_after["open_findings"], 1)
+
+        sarif_resp = self.client.get(f"/api/scans/{scan['id']}/export?format=sarif")
+        self.assertEqual(sarif_resp.status_code, 200)
+        self.assertIn('"version": "2.1.0"', sarif_resp.text)
+
+        html_resp = self.client.get(f"/api/scans/{scan['id']}/export?format=html")
+        self.assertEqual(html_resp.status_code, 200)
+        self.assertIn("CodeGuard Security", html_resp.text)
+
+        del_resp = self.client.delete(f"/api/scans/{scan['id']}")
+        self.assertEqual(del_resp.status_code, 200)
+        self.assertEqual(self.client.get(f"/api/scans/{scan['id']}").status_code, 404)
+
+    def test_upload_scan_and_traversal_blocking(self) -> None:
+        resp = self.client.post(
+            "/api/scans/upload",
+            json={
+                "folder_name": "demo-app",
                 "fail_on": "high",
                 "files": [
-                    {"path": "my-app/app.py", "content": 'import os\nos.system("id")\n'},
-                    {"path": "my-app/clean.py", "content": "x = 1\n"},
+                    {"path": "demo-app/main.py", "content": 'eval("1+1")\n'},
+                    {"path": "demo-app/clean.py", "content": "x = 42\n"},
                 ],
             },
         )
-        self.assertEqual(status, 200)
-        self.assertTrue(body["failed"])
-        self.assertEqual(body["summary"]["files_scanned"], 2)
-        self.assertEqual(body["findings"][0]["rule_id"], "CG-PY-002")
-        self.assertEqual(body["findings"][0]["file_path"], "my-app/app.py")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data["files_scanned"], 2)
+        self.assertEqual(data["findings_count"], 1)
+        self.assertEqual(data["findings"][0]["rule_id"], "CG-PY-001")
 
-        bad_status, bad_body = self._post_json(
-            "/api/scan-upload",
-            {
-                "fail_on": "high",
+        bad = self.client.post(
+            "/api/scans/upload",
+            json={
+                "folder_name": "bad",
                 "files": [{"path": "../escape.py", "content": "x = 1\n"}],
             },
         )
-        self.assertEqual(bad_status, 400)
-        self.assertIn("traversal", str(bad_body["error"]).lower())
+        self.assertEqual(bad.status_code, 400)
+        self.assertIn("traversal", bad.json()["detail"].lower())
+
+        logs = self.client.get("/api/audit-logs").json()["logs"]
+        actions = [entry["action"] for entry in logs]
+        self.assertIn("scan_upload", actions)
+
+    def test_browse_and_approved_roots_enforcement(self) -> None:
+        allowed_dir = self.root / "approved"
+        forbidden_dir = self.root / "forbidden"
+        (allowed_dir / "sub").mkdir(parents=True)
+        forbidden_dir.mkdir()
+
+        put_resp = self.client.put(
+            "/api/settings",
+            json={
+                "fail_on": "high",
+                "max_file_size_kb": 1024,
+                "entropy_threshold": 4.2,
+                "disabled_rules": [],
+                "ignore_paths": [".git/**"],
+                "allowlist_patterns": [],
+                "allowed_roots": [str(allowed_dir)],
+            },
+        )
+        self.assertEqual(put_resp.status_code, 200)
+
+        browse_ok = self.client.get("/api/browse")
+        self.assertEqual(browse_ok.status_code, 200)
+        self.assertEqual(browse_ok.json()["directories"][0]["name"], "sub")
+
+        browse_denied = self.client.get(f"/api/browse?path={forbidden_dir}")
+        self.assertEqual(browse_denied.status_code, 403)
+
+        scan_denied = self.client.post("/api/scans/path", json={"path": str(forbidden_dir)})
+        self.assertEqual(scan_denied.status_code, 403)
+
+    def test_rules_filter_and_settings_validation(self) -> None:
+        rules = self.client.get("/api/rules?severity=critical").json()["rules"]
+        self.assertTrue(all(r["severity"] == "critical" for r in rules))
+
+        bad_settings = self.client.put(
+            "/api/settings",
+            json={
+                "fail_on": "high",
+                "max_file_size_kb": 1024,
+                "entropy_threshold": 4.2,
+                "allowlist_patterns": ["[unclosed"],
+            },
+        )
+        self.assertEqual(bad_settings.status_code, 422)
 
 
 if __name__ == "__main__":

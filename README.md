@@ -38,11 +38,11 @@ OIS organises its research and engineering output across eight core IT industry 
 
 ## November 2026 Cohort (10 Challenges)
 
-Project `01-codeguard` is currently **`VERIFIED`**; Projects `02`–`10` remain **`PLANNED`**.
+Project `01-codeguard` is **`RELEASED`** (`v0.2.0`); Projects `02`–`10` remain **`PLANNED`**.
 
 | ID | Project | Domain | Status | Specification |
 | --- | --- | --- | --- | --- |
-| 01 | **CodeGuard** | Software Engineering & Developer Productivity | `VERIFIED` | [projects/01-codeguard](projects/01-codeguard/README.md) |
+| 01 | **CodeGuard** | Software Engineering & Developer Productivity | `RELEASED` | [projects/01-codeguard](projects/01-codeguard/README.md) |
 | 02 | **ThreatLens** | Cybersecurity & Identity | `PLANNED` | [projects/02-threatlens](projects/02-threatlens/README.md) |
 | 03 | **UptimePulse** | SRE & Observability | `PLANNED` | [projects/03-uptimepulse](projects/03-uptimepulse/README.md) |
 | 04 | **DeploySafe** | DevOps, CI/CD & Release Safety | `PLANNED` | [projects/04-deploysafe](projects/04-deploysafe/README.md) |

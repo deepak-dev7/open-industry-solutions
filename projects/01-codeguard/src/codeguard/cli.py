@@ -14,7 +14,6 @@ from codeguard.formatters import format_json, format_sarif, format_text
 from codeguard.models import Severity
 from codeguard.rules import ALL_RULES
 from codeguard.scanner import get_git_changed_files, scan_paths
-from codeguard.web import serve_ui
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -203,6 +202,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "init":
         return _handle_init(args)
     if args.command == "ui":
+        from codeguard.web import serve_ui
+
         serve_ui(host=args.host, port=args.port)
         return 0
 

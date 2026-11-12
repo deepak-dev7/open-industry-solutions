@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
+- **01 — CodeGuard v0.2.0 (`RELEASED`):** Completed full-stack local-first web application with FastAPI backend (`src/codeguard/api.py`), SQLite persistence (`src/codeguard/storage.py`), multi-view Light/Dark Web Workbench (`src/codeguard/static/`), interactive folder browser, finding triage, HTML/JSON/SARIF export, audit logging, Docker support (`Dockerfile`, `docker-compose.yml`), design/DB/API docs, 22 automated tests, and CI Docker verification.
 - **01 — CodeGuard (`VERIFIED`):** Implemented zero-dependency Python 3.11+ static security and quality guardrail CLI (`src/codeguard/`), ADR-001, threat model, SARIF v2.1.0 / JSON / text formatters, Git `--staged` and `--diff` support, `.codeguard.toml` loader, 16 unit/integration tests, and CI self-scan in `.github/workflows/validate.yml`.
 - Initialised the Open Industry Solutions (`open-industry-solutions`) workspace structure.
 - Added governance documentation (`README.md`, `LICENSE`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`).

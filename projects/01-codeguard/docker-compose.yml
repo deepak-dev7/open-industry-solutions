@@ -1,0 +1,16 @@
+services:
+  codeguard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "127.0.0.1:8765:8765"
+    environment:
+      CODEGUARD_DB_PATH: /data/codeguard.db
+    volumes:
+      - codeguard_data:/data
+      - .:/workspace:ro
+
+volumes:
+  codeguard_data:
+
