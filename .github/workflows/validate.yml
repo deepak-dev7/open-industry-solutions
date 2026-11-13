@@ -122,3 +122,32 @@ jobs:
         working-directory: projects/01-codeguard
         run: docker build -t ois-codeguard:ci .
 
+  test-02-threatlens:
+    name: Test 02-threatlens & Docker Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install 02-threatlens and test dependencies
+        working-directory: projects/02-threatlens
+        run: pip install --no-cache-dir ".[dev]"
+
+      - name: Run 02-threatlens automated test suite
+        working-directory: projects/02-threatlens
+        run: pytest -v
+
+      - name: Verify ThreatLens CLI scenarios command
+        working-directory: projects/02-threatlens
+        run: python -m threatlens.cli scenarios
+
+      - name: Verify 02-threatlens Docker image build
+        working-directory: projects/02-threatlens
+        run: docker build -t ois-threatlens:ci .
+
+

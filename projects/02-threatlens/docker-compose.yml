@@ -1,0 +1,14 @@
+services:
+  threatlens:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "127.0.0.1:8766:8766"
+    environment:
+      THREATLENS_DB_PATH: /data/threatlens.db
+    volumes:
+      - threatlens_data:/data
+
+volumes:
+  threatlens_data:

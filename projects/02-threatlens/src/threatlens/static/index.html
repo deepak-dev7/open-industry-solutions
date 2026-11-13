@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ThreatLens — Security Operations &amp; Suspicious Login Detection</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div class="app-layout">
+    <!-- SIDEBAR NAVIGATION -->
+    <aside class="soc-sidebar" id="soc-sidebar">
+      <div class="soc-brand">
+        <div class="brand-badge">TL</div>
+        <div class="brand-text">
+          <div class="brand-title">ThreatLens</div>
+          <div class="brand-subtitle">SOC &amp; Identity Defense</div>
+        </div>
+      </div>
+
+      <nav class="soc-nav">
+        <button class="nav-btn active" data-view="dashboard" type="button">
+          <span class="nav-icon">📊</span> SOC Overview
+        </button>
+        <button class="nav-btn" data-view="ingest" type="button">
+          <span class="nav-icon">📥</span> Ingest &amp; Scenarios
+        </button>
+        <button class="nav-btn" data-view="incidents" type="button">
+          <span class="nav-icon">🚨</span> Incident Queue
+          <span class="nav-count-badge" id="nav-active-count">0</span>
+        </button>
+        <button class="nav-btn" data-view="events" type="button">
+          <span class="nav-icon">🔍</span> Event Explorer
+        </button>
+        <button class="nav-btn" data-view="ioc" type="button">
+          <span class="nav-icon">🛡️</span> Threat Intel IOCs
+        </button>
+        <button class="nav-btn" data-view="settings" type="button">
+          <span class="nav-icon">⚙️</span> Detection Rules
+        </button>
+        <button class="nav-btn" data-view="help" type="button">
+          <span class="nav-icon">📖</span> MITRE ATT&amp;CK Docs
+        </button>
+      </nav>
+
+      <div class="sidebar-status-box">
+        <div class="status-indicator-dot" id="system-status-dot"></div>
+        <div class="status-indicator-info">
+          <div class="status-primary" id="system-status-title">SOC Engine Active</div>
+          <div class="status-secondary" id="system-status-sub">ThreatLens v0.1.0</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN INTERFACE -->
+    <main class="soc-main">
+      <header class="soc-topbar">
+        <div class="topbar-context">
+          <button class="mobile-toggle-btn" id="mobile-toggle" type="button" aria-label="Toggle Navigation">☰</button>
+          <div>
+            <h1 class="view-header-title" id="view-header-title">Security Operations Center</h1>
+            <p class="view-header-subtitle" id="view-header-subtitle">Real-time authentication telemetry &amp; MITRE ATT&amp;CK correlation</p>
+          </div>
+        </div>
+        <div class="topbar-actions">
+          <button class="btn btn-outline" id="quick-scenario-btn" type="button">⚡ Run Attack Scenario</button>
+          <button class="btn btn-primary" id="quick-ingest-btn" type="button">+ Upload Logs</button>
+        </div>
+      </header>
+
+      <div class="notification-banner hidden" id="soc-alert" role="alert"></div>
+      <div class="notification-toast hidden" id="soc-toast" role="status"></div>
+
+      <!-- VIEW 1: DASHBOARD -->
+      <section class="soc-view" id="view-dashboard">
+        <!-- METRIC CARDS -->
+        <div class="metrics-grid" id="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-label">Total Events Analyzed</div>
+            <div class="metric-value" id="kpi-total-events">0</div>
+            <div class="metric-sub">Normalized log entries</div>
+          </div>
+          <div class="metric-card alert-card">
+            <div class="metric-label">Active Incidents</div>
+            <div class="metric-value" id="kpi-active-incidents">0</div>
+            <div class="metric-sub" id="kpi-critical-sub">0 Critical</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Failed Logins</div>
+            <div class="metric-value metric-warn" id="kpi-failed-logins">0</div>
+            <div class="metric-sub" id="kpi-unique-ips">From 0 unique IPs</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Attacked Identities</div>
+            <div class="metric-value" id="kpi-unique-users">0</div>
+            <div class="metric-sub">Targeted accounts</div>
+          </div>
+        </div>
+
+        <div class="dashboard-split-row">
+          <!-- SEVERITY BREAKDOWN -->
+          <div class="card-panel">
+            <div class="panel-header">
+              <h3>Incident Severity Distribution</h3>
+              <span class="tag-meta">MITRE Correlated</span>
+            </div>
+            <div class="severity-bars-container">
+              <div class="severity-bar-row">
+                <span class="severity-name sev-critical">CRITICAL</span>
+                <div class="bar-track"><div class="bar-fill fill-critical" id="bar-crit" style="width: 0%;"></div></div>
+                <span class="severity-count" id="count-crit">0</span>
+              </div>
+              <div class="severity-bar-row">
+                <span class="severity-name sev-high">HIGH</span>
+                <div class="bar-track"><div class="bar-fill fill-high" id="bar-high" style="width: 0%;"></div></div>
+                <span class="severity-count" id="count-high">0</span>
+              </div>
+              <div class="severity-bar-row">
+                <span class="severity-name sev-medium">MEDIUM</span>
+                <div class="bar-track"><div class="bar-fill fill-medium" id="bar-med" style="width: 0%;"></div></div>
+                <span class="severity-count" id="count-med">0</span>
+              </div>
+              <div class="severity-bar-row">
+                <span class="severity-name sev-low">LOW</span>
+                <div class="bar-track"><div class="bar-fill fill-low" id="bar-low" style="width: 0%;"></div></div>
+                <span class="severity-count" id="count-low">0</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- TOP ATTACKER IPS -->
+          <div class="card-panel">
+            <div class="panel-header">
+              <h3>Top Threat Origin IPs</h3>
+              <span class="tag-meta">Highest Failure Volume</span>
+            </div>
+            <div class="soc-list-container" id="top-attackers-list">
+              <div class="empty-state-muted">No security events ingested yet.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- RECENT INCIDENTS TABLE -->
+        <div class="card-panel">
+          <div class="panel-header">
+            <h3>Recent Correlated Incidents</h3>
+            <button class="btn btn-outline btn-sm" id="dash-view-all-btn" type="button">View All Incidents</button>
+          </div>
+          <div class="table-container" id="recent-incidents-table">
+            <div class="empty-state-muted">No incidents detected. Ingest an authentication log to run correlation.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW 2: INGEST & SCENARIOS -->
+      <section class="soc-view hidden" id="view-ingest">
+        <div class="card-panel">
+          <div class="panel-header">
+            <h3>Interactive Attack Simulation Scenarios</h3>
+            <span class="tag-meta">One-Click Demonstration Data</span>
+          </div>
+          <p class="panel-desc">Load realistic, production-patterned security event streams to test threat detection rules.</p>
+          <div class="scenarios-grid" id="scenarios-grid">
+            <!-- Dynamically populated from /api/scenarios -->
+          </div>
+        </div>
+
+        <div class="dashboard-split-row">
+          <!-- FILE UPLOAD -->
+          <div class="card-panel">
+            <div class="panel-header">
+              <h3>Upload Security Log File</h3>
+              <span class="tag-meta">syslog, auth.log, Windows JSON, CloudTrail</span>
+            </div>
+            <form id="upload-form">
+              <div class="drop-zone" id="drop-zone">
+                <div class="drop-icon">📁</div>
+                <div class="drop-title">Drag &amp; drop authentication log file here</div>
+                <div class="drop-subtitle">Supports /var/log/auth.log, syslog, Windows Event JSON, Okta/AWS JSON, or CSV (max 32MB)</div>
+                <input type="file" id="log-file-input" class="file-input-hidden" />
+                <button class="btn btn-outline btn-sm" type="button" id="browse-file-btn">Select File</button>
+              </div>
+              <div class="file-selected-info hidden" id="file-info-bar">
+                <span id="selected-filename">filename.log</span>
+                <button class="btn btn-primary btn-sm" type="submit" id="submit-upload-btn">Start Ingestion &amp; Triage</button>
+              </div>
+            </form>
+          </div>
+
+          <!-- RAW TEXT PASTE -->
+          <div class="card-panel">
+            <div class="panel-header">
+              <h3>Paste Raw Log Entries</h3>
+              <span class="tag-meta">Direct Ingestion</span>
+            </div>
+            <form id="paste-form">
+              <label for="paste-format-hint">Format Hint</label>
+              <select id="paste-format-hint" class="input-select">
+                <option value="auto">Auto-Detect Format</option>
+                <option value="syslog">Linux auth.log / syslog (OpenSSH / PAM)</option>
+                <option value="windows_event">Windows Security Event JSON (4624 / 4625 / 4672)</option>
+                <option value="json">Generic JSON Events</option>
+                <option value="csv">CSV Event Table</option>
+              </select>
+
+              <label for="paste-text-area">Log Content</label>
+              <textarea id="paste-text-area" class="input-textarea" rows="8" placeholder="Paste raw auth.log or JSON lines here..."></textarea>
+              <button class="btn btn-primary" type="submit">Ingest &amp; Analyze</button>
+            </form>
+          </div>
+        </div>
+
+        <div class="card-panel hidden" id="ingest-results-panel">
+          <div class="panel-header">
+            <h3>Ingestion &amp; Correlation Summary</h3>
+            <span class="tag-meta badge-success" id="ingest-status-tag">Completed</span>
+          </div>
+          <div class="ingest-stats-strip" id="ingest-stats-strip"></div>
+          <div class="table-container" id="ingest-incidents-table"></div>
+        </div>
+      </section>
+
+      <!-- VIEW 3: INCIDENT QUEUE -->
+      <section class="soc-view hidden" id="view-incidents">
+        <div class="card-panel">
+          <div class="panel-header">
+            <h3>Security Incidents Ledger</h3>
+            <div class="filter-controls-row">
+              <input type="search" id="incident-search-input" class="input-search" placeholder="Search by title, IP, user, MITRE ID..." />
+              <select id="incident-severity-select" class="input-select">
+                <option value="">All Severities</option>
+                <option value="critical">Critical</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+              </select>
+              <select id="incident-status-select" class="input-select">
+                <option value="">All Statuses</option>
+                <option value="new">New</option>
+                <option value="investigating">Investigating</option>
+                <option value="contained">Contained</option>
+                <option value="resolved">Resolved</option>
+                <option value="false_positive">False Positive</option>
+              </select>
+              <button class="btn btn-outline btn-sm" id="refresh-incidents-btn" type="button">Refresh</button>
+            </div>
+          </div>
+          <div class="table-container" id="incidents-full-table">
+            <div class="empty-state-muted">No incidents match the active filters.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW 4: INCIDENT DETAIL & TIMELINE -->
+      <section class="soc-view hidden" id="view-incident-detail">
+        <div class="detail-header-card">
+          <div class="detail-top-bar">
+            <button class="btn btn-outline btn-sm" id="back-to-incidents-btn" type="button">← Back to Incidents</button>
+            <div class="detail-export-group">
+              <button class="btn btn-outline btn-sm" id="export-inc-json-btn" type="button">Export JSON</button>
+              <button class="btn btn-outline btn-sm" id="export-inc-csv-btn" type="button">Export Events CSV</button>
+              <button class="btn btn-outline btn-sm" id="export-inc-md-btn" type="button">Export Markdown</button>
+            </div>
+          </div>
+          <div class="detail-main-info">
+            <div class="detail-title-group">
+              <span class="badge" id="detail-sev-badge">CRITICAL</span>
+              <h2 id="detail-title">Incident Title</h2>
+            </div>
+            <div class="detail-meta-row">
+              <span class="meta-item">ID: <strong id="detail-id" class="mono">INC-0000</strong></span>
+              <span class="meta-item">MITRE: <strong id="detail-mitre" class="mono">T1110</strong></span>
+              <span class="meta-item">Risk Score: <strong id="detail-risk" class="risk-highlight">95/100</strong></span>
+              <span class="meta-item">Adversary IP: <strong id="detail-ip" class="mono">198.51.100.22</strong></span>
+              <span class="meta-item">Target Account: <strong id="detail-user" class="mono">admin</strong></span>
+              <span class="meta-item">Correlated Events: <strong id="detail-count">0</strong></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="dashboard-split-row">
+          <!-- TRIAGE CONSOLE -->
+          <div class="card-panel">
+            <div class="panel-header">
+              <h3>Analyst Triage Console</h3>
+              <span class="tag-meta">Investigation Management</span>
+            </div>
+            <form id="detail-triage-form">
+              <label for="detail-status-select">Incident Status</label>
+              <select id="detail-status-select" class="input-select">
+                <option value="new">NEW (Unassigned)</option>
+                <option value="investigating">INVESTIGATING (Active Analysis)</option>
+                <option value="contained">CONTAINED (Firewall/IAM Block Enforced)</option>
+                <option value="resolved">RESOLVED (Remediation Complete)</option>
+                <option value="false_positive">FALSE POSITIVE (Verified Legitimate)</option>
+              </select>
+
+              <label for="detail-notes-input">Analyst Forensic Notes &amp; Containment Actions</label>
+              <textarea id="detail-notes-input" class="input-textarea" rows="4" placeholder="Enter findings, root cause, IP blocking actions, and containment verification..."></textarea>
+              <button class="btn btn-primary" type="submit">Update Incident Triage</button>
+            </form>
+          </div>
+
+          <!-- FORENSIC ATTACK TIMELINE -->
+          <div class="card-panel">
+            <div class="panel-header">
+              <h3>Attack Progression Timeline</h3>
+              <span class="tag-meta" id="timeline-event-count">0 Events</span>
+            </div>
+            <div class="timeline-container" id="detail-timeline"></div>
+          </div>
+        </div>
+
+        <!-- RAW EVIDENCE TABLE -->
+        <div class="card-panel">
+          <div class="panel-header">
+            <h3>Correlated Raw Log Evidence</h3>
+            <span class="tag-meta">Tamper-Proof Audit Trail</span>
+          </div>
+          <div class="table-container" id="detail-evidence-table"></div>
+        </div>
+      </section>
+
+      <!-- VIEW 5: EVENT EXPLORER -->
+      <section class="soc-view hidden" id="view-events">
+        <div class="card-panel">
+          <div class="panel-header">
+            <h3>Raw Security Event Log Explorer</h3>
+            <div class="filter-controls-row">
+              <input type="search" id="event-search-input" class="input-search" placeholder="Search message text, host..." />
+              <input type="text" id="event-user-filter" class="input-text-sm" placeholder="Username filter" />
+              <input type="text" id="event-ip-filter" class="input-text-sm" placeholder="IP filter" />
+              <select id="event-status-filter" class="input-select-sm">
+                <option value="">All Statuses</option>
+                <option value="failure">Failure Only</option>
+                <option value="success">Success Only</option>
+                <option value="info">Info / Privilege</option>
+              </select>
+              <button class="btn btn-outline btn-sm" id="refresh-events-btn" type="button">Search</button>
+            </div>
+          </div>
+          <div class="table-container" id="events-full-table">
+            <div class="empty-state-muted">No events ingested yet.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW 6: THREAT INTEL IOCS -->
+      <section class="soc-view hidden" id="view-ioc">
+        <div class="dashboard-split-row">
+          <div class="card-panel">
+            <div class="panel-header">
+              <h3>Active Threat Intelligence IOC Feed</h3>
+              <span class="tag-meta">Offline Matching Engine</span>
+            </div>
+            <div class="table-container" id="ioc-list-table"></div>
+          </div>
+
+          <div class="card-panel">
+            <div class="panel-header">
+              <h3>Add Threat Indicator (IOC)</h3>
+              <span class="tag-meta">Custom Blocklist</span>
+            </div>
+            <form id="add-ioc-form">
+              <label for="ioc-type-select">Indicator Type</label>
+              <select id="ioc-type-select" class="input-select">
+                <option value="ip">Single IP Address (e.g. 198.51.100.4)</option>
+                <option value="cidr">CIDR Subnet (e.g. 185.220.101.0/24)</option>
+              </select>
+
+              <label for="ioc-indicator-input">Indicator Value</label>
+              <input type="text" id="ioc-indicator-input" class="input-text" placeholder="185.220.101.5 or 198.51.100.0/24" required />
+
+              <label for="ioc-threat-type-input">Threat Classification</label>
+              <select id="ioc-threat-type-input" class="input-select">
+                <option value="tor_exit_node">Tor Exit Node</option>
+                <option value="brute_force_botnet">Brute Force Botnet</option>
+                <option value="malicious_scanner">Malicious Vulnerability Scanner</option>
+                <option value="known_c2">Command &amp; Control (C2) Subnet</option>
+              </select>
+
+              <label for="ioc-severity-select">Alert Severity</label>
+              <select id="ioc-severity-select" class="input-select">
+                <option value="critical">CRITICAL</option>
+                <option value="high" selected>HIGH</option>
+                <option value="medium">MEDIUM</option>
+              </select>
+
+              <label for="ioc-desc-input">Description &amp; Threat Context</label>
+              <input type="text" id="ioc-desc-input" class="input-text" placeholder="Reported in automated credential stuffing attacks..." required />
+
+              <button class="btn btn-primary" type="submit">Add to Threat Intel Feed</button>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW 7: DETECTION SETTINGS & AUDIT -->
+      <section class="soc-view hidden" id="view-settings">
+        <div class="dashboard-split-row">
+          <div class="card-panel">
+            <div class="panel-header">
+              <h3>Detection Thresholds &amp; Parameters</h3>
+              <span class="tag-meta">Configurable Behavioral Rules</span>
+            </div>
+            <form id="settings-form">
+              <label for="set-bf-threshold">Brute Force Threshold (Failed attempts on single account)</label>
+              <input type="number" id="set-bf-threshold" class="input-text" min="2" max="100" required />
+
+              <label for="set-bf-window">Brute Force Time Window (seconds)</label>
+              <input type="number" id="set-bf-window" class="input-text" min="10" max="3600" required />
+
+              <label for="set-spray-threshold">Password Spray Account Threshold (Distinct users from single IP)</label>
+              <input type="number" id="set-spray-threshold" class="input-text" min="2" max="50" required />
+
+              <label for="set-spray-window">Password Spray Time Window (seconds)</label>
+              <input type="number" id="set-spray-window" class="input-text" min="10" max="7200" required />
+
+              <label for="set-travel-speed">Impossible Travel Velocity Gate (km/h)</label>
+              <input type="number" id="set-travel-speed" class="input-text" min="100" max="5000" step="50" required />
+
+              <div class="form-row">
+                <div>
+                  <label for="set-work-start">Work Hours Start (UTC Hour 0-23)</label>
+                  <input type="number" id="set-work-start" class="input-text" min="0" max="23" required />
+                </div>
+                <div>
+                  <label for="set-work-end">Work Hours End (UTC Hour 0-24)</label>
+                  <input type="number" id="set-work-end" class="input-text" min="0" max="24" required />
+                </div>
+              </div>
+
+              <label for="set-priv-users">Privileged Accounts (comma separated)</label>
+              <input type="text" id="set-priv-users" class="input-text" required />
+
+              <button class="btn btn-primary" type="submit">Save Detection Policies</button>
+            </form>
+          </div>
+
+          <div class="card-panel">
+            <div class="panel-header">
+              <h3>SOC Analyst Audit Trail</h3>
+              <button class="btn btn-outline btn-sm" id="refresh-audit-btn" type="button">Refresh</button>
+            </div>
+            <div class="audit-trail-list" id="audit-trail-list">
+              <div class="empty-state-muted">No audit events recorded yet.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW 8: HELP & MITRE DOCS -->
+      <section class="soc-view hidden" id="view-help">
+        <div class="card-panel">
+          <div class="panel-header">
+            <h3>MITRE ATT&amp;CK Mapping &amp; Detection Principles</h3>
+            <span class="tag-meta">Enterprise Threat Framework</span>
+          </div>
+          <div class="mitre-cards-grid">
+            <div class="mitre-card">
+              <div class="mitre-badge">T1110.001</div>
+              <h4>Brute Force: Password Guessing</h4>
+              <p>Adversaries systematically guess passwords to gain unauthorized access to target accounts. ThreatLens correlates bursts of login failures originating from the same source targeting identical accounts.</p>
+            </div>
+            <div class="mitre-card">
+              <div class="mitre-badge">T1110.003</div>
+              <h4>Brute Force: Password Spraying</h4>
+              <p>Adversaries attempt a small number of commonly used passwords against a wide enumeration of corporate accounts to bypass account lockout policies. ThreatLens correlates single-IP attacks spanning multiple distinct users.</p>
+            </div>
+            <div class="mitre-card">
+              <div class="mitre-badge">T1078</div>
+              <h4>Valid Accounts: Impossible Travel</h4>
+              <p>When valid credentials are leaked or bought on the dark web, authentications may occur from widely separated geographies within impossible transit windows. ThreatLens uses Haversine great-circle velocity math to flag impossible spatial anomalies.</p>
+            </div>
+            <div class="mitre-card">
+              <div class="mitre-badge">T1078.004</div>
+              <h4>Valid Accounts: Cloud / System Accounts (After Hours)</h4>
+              <p>Privileged system logins (such as root or domain administrator) occurring during off-hours or weekends often signify lateral movement or unauthorized insider access.</p>
+            </div>
+            <div class="mitre-card">
+              <div class="mitre-badge">T1071</div>
+              <h4>Application Layer Protocol: Anonymization</h4>
+              <p>Threat actors frequently route attacks through Tor exit nodes and bulletproof proxy networks to disguise source attribution. ThreatLens checks incoming traffic against curated threat intelligence feeds.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

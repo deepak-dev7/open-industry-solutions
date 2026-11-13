@@ -6,12 +6,12 @@
 
 ---
 
-## November 2026 Cohort (1 Released / 9 Planned)
+## November 2026 Cohort (2 Released / 8 Planned)
 
 | # | Project | Domain | Lifecycle Status | Implementation | Tests | Release Criteria |
 | --- | --- | --- | --- | --- | --- | --- |
 | 01 | [CodeGuard](../projects/01-codeguard/README.md) | Software Engineering & Developer Productivity | `RELEASED` | FastAPI + SQLite + Web Workbench + CLI (`src/codeguard/`) | Passing (22 tests) | Met (`v0.2.0` + CI Docker build) |
-| 02 | [ThreatLens](../projects/02-threatlens/README.md) | Cybersecurity & Identity | `PLANNED` | Not started | Not started | Pending |
+| 02 | [ThreatLens](../projects/02-threatlens/README.md) | Cybersecurity & Identity | `RELEASED` | FastAPI + SQLite WAL + Geo-Velocity Engine + MITRE ATT&CK SOC Workbench (`src/threatlens/`) | Passing (29 tests) | Met (`v0.1.0` + CI Docker build) |
 | 03 | [UptimePulse](../projects/03-uptimepulse/README.md) | SRE & Observability | `PLANNED` | Not started | Not started | Pending |
 | 04 | [DeploySafe](../projects/04-deploysafe/README.md) | DevOps, CI/CD & Release Safety | `PLANNED` | Not started | Not started | Pending |
 | 05 | [QuerySense AI](../projects/05-querysense-ai/README.md) | Data Engineering, Databases & Applied AI | `PLANNED` | Not started | Not started | Pending |
@@ -25,9 +25,9 @@
 
 ## Summary Counts (November 2026)
 
-- **PLANNED:** 9
+- **PLANNED:** 8
 - **DESIGNED:** 0
 - **IN_DEVELOPMENT:** 0
 - **VERIFIED:** 0
-- **RELEASED:** 1
+- **RELEASED:** 2
 
